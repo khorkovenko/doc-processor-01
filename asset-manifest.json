@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/doc-processor-01/static/js/main.ae7ac020.js",
+    "main.js": "/doc-processor-01/static/js/main.f36173b2.js",
     "index.html": "/doc-processor-01/index.html",
-    "main.ae7ac020.js.map": "/doc-processor-01/static/js/main.ae7ac020.js.map"
+    "main.f36173b2.js.map": "/doc-processor-01/static/js/main.f36173b2.js.map"
   },
   "entrypoints": [
-    "static/js/main.ae7ac020.js"
+    "static/js/main.f36173b2.js"
   ]
 }
