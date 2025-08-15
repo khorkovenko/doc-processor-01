@@ -88,6 +88,22 @@ const DocumentProcessor = () => {
         return processedContent;
     };
 
+    const downloadFile = (blob, downloadFileName) => {
+        // For Android/Web compatibility
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = downloadFileName;
+        document.body.appendChild(a);
+
+        // Trigger download inside a user gesture
+        a.click();
+
+        // Cleanup
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
 
@@ -123,14 +139,7 @@ const DocumentProcessor = () => {
                 downloadFileName = `processed_${fileName.replace(/\.[^/.]+$/, '')}.docx`;
             }
 
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = downloadFileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            downloadFile(blob, downloadFileName);
 
             const subject = encodeURIComponent("Processed Document");
             const body = encodeURIComponent(
@@ -238,22 +247,7 @@ const DocumentProcessor = () => {
                 <div className="text-center mt-6 text-gray-500 text-sm">
                     &copy; {new Date().getFullYear()} Document Processor
                 </div>
-
-                <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
-                    <h3 className="text-lg font-medium text-gray-700 mb-3">How it works:</h3>
-                    <ol className="list-decimal list-inside space-y-2 text-gray-600">
-                        <li>Upload a document (.doc, .docx, or .txt) containing variables in {`{{variable_name}}`} format</li>
-                        <li>
-                            Fill in the text fields that appear for each variable found (must be enclosed in {"{{ }}"} - double figure brackets)
-                        </li>
-                        <li>If your input is shorter than the variable name, underscores will be added on both sides</li>
-                        <li>Provide an email address where the processed document should be sent</li>
-                        <li>Click submit to process the document and open Gmail with pre-filled email content</li>
-                    </ol>
-                </div>
             </div>
-
-
         </div>
     );
 };
