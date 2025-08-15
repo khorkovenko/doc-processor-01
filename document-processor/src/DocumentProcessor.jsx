@@ -3,7 +3,6 @@ import { Upload, FileText, Send, CheckCircle } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import { Document, Packer, Paragraph } from "docx";
 
-
 const DocumentProcessor = () => {
     const [file, setFile] = useState(null);
     const [variables, setVariables] = useState([]);
@@ -21,9 +20,7 @@ const DocumentProcessor = () => {
         let match;
         while ((match = regex.exec(content)) !== null) {
             const varName = match[1].trim();
-            if (!matches.includes(varName)) {
-                matches.push(varName);
-            }
+            if (!matches.includes(varName)) matches.push(varName);
         }
         return matches;
     };
@@ -56,11 +53,8 @@ const DocumentProcessor = () => {
             setVariables(extractedVars);
 
             const initialValues = {};
-            extractedVars.forEach(varName => {
-                initialValues[varName] = '';
-            });
+            extractedVars.forEach(varName => initialValues[varName] = '');
             setValues(initialValues);
-
         } catch (error) {
             console.error('Error processing file:', error);
             alert('Error processing file. Please try again.');
@@ -70,10 +64,7 @@ const DocumentProcessor = () => {
     };
 
     const handleValueChange = (varName, value) => {
-        setValues(prev => ({
-            ...prev,
-            [varName]: value
-        }));
+        setValues(prev => ({ ...prev, [varName]: value }));
     };
 
     const processDocument = () => {
@@ -115,31 +106,21 @@ const DocumentProcessor = () => {
         try {
             const processedContent = processDocument();
             const originalExt = fileName.split('.').pop().toLowerCase();
-
             let blob;
             let downloadFileName;
 
             if (originalExt === "txt") {
                 blob = new Blob([processedContent], { type: "text/plain" });
                 downloadFileName = `processed_${fileName.replace(/\.[^/.]+$/, '')}.txt`;
-            } else if (originalExt === "doc" || originalExt === "docx") {
-                const doc = new Document({
-                    sections: [
-                        {
-                            properties: {},
-                            children: processedContent.split("\n").map(
-                                (line) => new Paragraph(line)
-                            ),
-                        },
-                    ],
-                });
-                const docxBlob = await Packer.toBlob(doc);
-                blob = docxBlob;
-                downloadFileName = `processed_${fileName.replace(/\.[^/.]+$/, '')}.docx`;
             } else {
-                alert("Unsupported file type for saving");
-                setIsSubmitting(false);
-                return;
+                const doc = new Document({
+                    sections: [{
+                        properties: {},
+                        children: processedContent.split("\n").map(line => new Paragraph(line))
+                    }]
+                });
+                blob = await Packer.toBlob(doc);
+                downloadFileName = `processed_${fileName.replace(/\.[^/.]+$/, '')}.docx`;
             }
 
             const url = URL.createObjectURL(blob);
@@ -155,13 +136,9 @@ const DocumentProcessor = () => {
             const body = encodeURIComponent(
                 `Hello,\n\nPlease find the processed document attached.\n\n(Downloaded as: ${downloadFileName})`
             );
-            window.open(
-                `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${subject}&body=${body}`,
-                "_blank"
-            );
+            window.location.href = `mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`;
 
             setSubmitted(true);
-
         } catch (error) {
             console.error("Error processing submission:", error);
             alert("Error preparing document. Please try again.");
@@ -213,105 +190,53 @@ const DocumentProcessor = () => {
                             Upload a document, fill in variables, and get it sent via email
                         </p>
                     </div>
-
                     <div className="p-6">
                         {!file ? (
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-indigo-400 transition-colors">
                                 <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-gray-700 mb-2">
-                                    Upload your document
-                                </h3>
-                                <p className="text-gray-500 mb-4">
-                                    Support for .doc, .docx, and .txt files with {`{{variable}}`} placeholders
-                                </p>
+                                <h3 className="text-lg font-medium text-gray-700 mb-2">Upload your document</h3>
+                                <p className="text-gray-500 mb-4">Support for .doc, .docx, and .txt files with variable placeholders</p>
                                 <label className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer inline-block">
                                     Choose File
-                                    <input
-                                        type="file"
-                                        accept=".doc,.docx,.txt"
-                                        onChange={handleFileUpload}
-                                        className="hidden"
-                                        disabled={isProcessing}
-                                    />
+                                    <input type="file" accept=".doc,.docx,.txt" onChange={handleFileUpload} className="hidden" disabled={isProcessing} />
                                 </label>
-                                {isProcessing && (
-                                    <p className="text-indigo-600 mt-2">Processing document...</p>
-                                )}
+                                {isProcessing && <p className="text-indigo-600 mt-2">Processing document...</p>}
                             </div>
                         ) : (
                             <div className="space-y-6">
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <h3 className="font-medium text-gray-700 mb-2">Uploaded File:</h3>
                                     <p className="text-indigo-600">{fileName}</p>
-                                    <button
-                                        type="button"
-                                        onClick={resetForm}
-                                        className="text-red-600 hover:text-red-700 text-sm mt-2"
-                                    >
+                                    <button type="button" onClick={resetForm} className="text-red-600 hover:text-red-700 text-sm mt-2">
                                         Upload Different File
                                     </button>
                                 </div>
-
                                 {variables.length > 0 && (
                                     <div>
-                                        <h3 className="text-lg font-medium text-gray-700 mb-4">
-                                            Fill in Variables ({variables.length} found)
-                                        </h3>
+                                        <h3 className="text-lg font-medium text-gray-700 mb-4">Fill in Variables ({variables.length} found)</h3>
                                         <div className="grid gap-4 md:grid-cols-2">
                                             {variables.map((varName) => (
                                                 <div key={varName}>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                        {`{{${varName}}}`}
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={values[varName] || ''}
-                                                        onChange={(e) => handleValueChange(varName, e.target.value)}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                                        placeholder={`Enter value for ${varName}`}
-                                                    />
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">`${varName}`</label>
+                                                    <input type="text" value={values[varName] || ''} onChange={(e) => handleValueChange(varName, e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder={`Enter value for ${varName}`} />
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 )}
-
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Email Address *
-                                    </label>
-                                    <input
-                                        type="email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                        placeholder="Enter email to receive processed document"
-                                        required
-                                    />
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter email to receive processed document" required />
                                 </div>
-
-                                <button
-                                    type="button"
-                                    onClick={handleSubmit}
-                                    disabled={isSubmitting || variables.length === 0}
-                                    className="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                                >
-                                    {isSubmitting ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                            Processing & Sending...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Send className="w-4 h-4" />
-                                            Process & Send Document
-                                        </>
-                                    )}
+                                <button type="button" onClick={handleSubmit} disabled={isSubmitting || variables.length === 0} className="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+                                    {isSubmitting ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Processing & Sending...</> : <><Send className="w-4 h-4" />Process & Send Document</>}
                                 </button>
-
                             </div>
                         )}
                     </div>
+                </div>
+                <div className="text-center mt-6 text-gray-500 text-sm">
+                    &copy; {new Date().getFullYear()} Document Processor
                 </div>
 
                 <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
@@ -327,6 +252,8 @@ const DocumentProcessor = () => {
                     </ol>
                 </div>
             </div>
+
+
         </div>
     );
 };
