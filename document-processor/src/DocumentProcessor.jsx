@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Upload, FileText, Send, CheckCircle } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import { Document, Packer, Paragraph } from "docx";
+import emailjs from '@emailjs/browser';
 
 const DocumentProcessor = () => {
     const [file, setFile] = useState(null);
@@ -88,22 +89,6 @@ const DocumentProcessor = () => {
         return processedContent;
     };
 
-    const downloadFile = (blob, downloadFileName) => {
-        // For Android/Web compatibility
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = downloadFileName;
-        document.body.appendChild(a);
-
-        // Trigger download inside a user gesture
-        a.click();
-
-        // Cleanup
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-
     const handleSubmit = async (event) => {
         event.preventDefault();
 
@@ -139,17 +124,31 @@ const DocumentProcessor = () => {
                 downloadFileName = `processed_${fileName.replace(/\.[^/.]+$/, '')}.docx`;
             }
 
-            downloadFile(blob, downloadFileName);
+            // Convert file to base64 for EmailJS
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64data = reader.result.split(',')[1]; // Remove "data:application/...;base64,"
 
-            const subject = encodeURIComponent("Processed Document");
-            const body = encodeURIComponent(
-                `Hello,\n\nPlease find the processed document attached.\n\n(Downloaded as: ${downloadFileName})`
-            );
-            window.location.href = `mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`;
+                const templateParams = {
+                    to_email: email,
+                    file_name: downloadFileName,
+                    message: "Please find the processed document attached.",
+                    attachment: base64data
+                };
 
-            setSubmitted(true);
+                await emailjs.send(
+                    "service_2aw171i",
+                    "template_825etyj",
+                    templateParams,
+                    "HHkePgkq8bBIAPUIx"
+                );
+
+                setSubmitted(true);
+            };
+
+            reader.readAsDataURL(blob);
         } catch (error) {
-            console.error("Error processing submission:", error);
+            console.error("Error sending document:", error);
             alert("Error preparing document. Please try again.");
         }
 
@@ -173,7 +172,7 @@ const DocumentProcessor = () => {
                     <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">Document Sent!</h2>
                     <p className="text-gray-600 mb-6">
-                        Your processed document has been sent to <strong>{email}</strong> and downloaded to your device.
+                        Your processed document has been sent to <strong>{email}</strong>.
                     </p>
                     <button
                         onClick={resetForm}
@@ -196,7 +195,7 @@ const DocumentProcessor = () => {
                             Document Variable Processor
                         </h1>
                         <p className="text-indigo-100 mt-2">
-                            Upload a document, fill in variables, and get it sent via email
+                            Upload a document, fill in variables, and have it emailed to you automatically
                         </p>
                     </div>
                     <div className="p-6">
@@ -238,14 +237,11 @@ const DocumentProcessor = () => {
                                     <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter email to receive processed document" required />
                                 </div>
                                 <button type="button" onClick={handleSubmit} disabled={isSubmitting || variables.length === 0} className="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
-                                    {isSubmitting ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Processing & Sending...</> : <><Send className="w-4 h-4" />Process & Send Document</>}
+                                    {isSubmitting ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Sending via Email...</> : <><Send className="w-4 h-4" />Process & Send Document</>}
                                 </button>
                             </div>
                         )}
                     </div>
-                </div>
-                <div className="text-center mt-6 text-gray-500 text-sm">
-                    &copy; {new Date().getFullYear()} Document Processor
                 </div>
             </div>
         </div>
