@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Document Variable Processor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Tailwind via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Lucide icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Simple spinner */
+        .spinner {
+            width: 16px; height: 16px; border:2px solid white; border-top-color: transparent;
+            border-radius: 50%; display:inline-block; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+
+<div class="max-w-4xl mx-auto p-4">
+    <div class="bg-white rounded-lg shadow-xl overflow-hidden">
+        <div class="bg-indigo-600 text-white p-6">
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                <i data-lucide="file-text" class="w-6 h-6"></i>
+                Document Variable Processor
+            </h1>
+            <p class="text-indigo-100 mt-2">
+                Upload a document, fill in variables, and have it emailed to you automatically
+            </p>
+        </div>
+
+        <div class="p-6" id="app">
+
+            <!-- Step 1: Upload -->
+            <div id="uploadPane" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-indigo-400 transition-colors">
+                <i data-lucide="upload" class="w-12 h-12 text-gray-400 mx-auto mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-700 mb-2">Upload your document</h3>
+                <p class="text-gray-500 mb-4">Support for .doc, .docx, and .txt files with variable placeholders</p>
+                <label class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer inline-block">
+                    Choose File
+                    <input id="fileInput" type="file" accept=".doc,.docx,.txt" class="hidden" />
+                </label>
+                <p id="processingNote" class="text-indigo-600 mt-2 hidden">Processing document...</p>
+                <p id="uploadError" class="text-red-600 mt-2 hidden"></p>
+            </div>
+
+            <!-- Step 2: Variables + Email -->
+            <form id="formPane" class="space-y-6 hidden">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-medium text-gray-700 mb-2">Uploaded File:</h3>
+                    <p id="uploadedName" class="text-indigo-600"></p>
+                    <button id="resetBtn" type="button" class="text-red-600 hover:text-red-700 text-sm mt-2">Upload Different File</button>
+                </div>
+
+                <div id="variablesPane" class="hidden">
+                    <h3 class="text-lg font-medium text-gray-700 mb-4">
+                        Fill in Variables (<span id="varCount">0</span> found)
+                    </h3>
+                    <div id="varsGrid" class="grid gap-4 md:grid-cols-2"></div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                    <input id="emailInput" type="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter email to receive processed document" required />
+                </div>
+
+                <button id="sendBtn" type="submit" class="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
+                    <span class="hidden" id="sendSpinner"><span class="spinner"></span> Sending...</span>
+                    <span id="sendLabel"><i data-lucide="send" class="w-4 h-4"></i> Process & Send Document</span>
+                </button>
+            </form>
+
+            <!-- Step 3: Success -->
+            <div id="successPane" class="hidden min-h-[220px] flex items-center justify-center">
+                <div class="bg-white rounded-lg p-8 max-w-md w-full text-center border">
+                    <i data-lucide="check-circle-2" class="w-16 h-16 text-green-500 mx-auto mb-4"></i>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Document Sent!</h2>
+                    <p class="text-gray-600 mb-6">
+                        Your processed document has been sent to <strong id="sentEmail"></strong>.
+                    </p>
+                    <button id="againBtn" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+                        Process Another Document
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="text-center mt-6 text-gray-500 text-sm">
+        &copy; <span id="year"></span> Document Processor
+    </div>
+</div>
+
+<script>
+    // lucide init
+    lucide.createIcons();
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    const fileInput = document.getElementById("fileInput");
+    const processingNote = document.getElementById("processingNote");
+    const uploadError = document.getElementById("uploadError");
+    const uploadPane = document.getElementById("uploadPane");
+    const formPane = document.getElementById("formPane");
+    const variablesPane = document.getElementById("variablesPane");
+    const varsGrid = document.getElementById("varsGrid");
+    const varCount = document.getElementById("varCount");
+    const uploadedName = document.getElementById("uploadedName");
+    const resetBtn = document.getElementById("resetBtn");
+    const emailInput = document.getElementById("emailInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const sendSpinner = document.getElementById("sendSpinner");
+    const sendLabel = document.getElementById("sendLabel");
+    const successPane = document.getElementById("successPane");
+    const againBtn = document.getElementById("againBtn");
+    const sentEmail = document.getElementById("sentEmail");
+
+    let lastFile = null;
+    let lastVariables = [];
+
+    const show = (el) => el.classList.remove("hidden");
+    const hide = (el) => el.classList.add("hidden");
+
+    resetBtn.addEventListener("click", () => {
+        lastFile = null;
+        lastVariables = [];
+        fileInput.value = "";
+        emailInput.value = "";
+        varsGrid.innerHTML = "";
+        hide(formPane);
+        hide(successPane);
+        show(uploadPane);
+    });
+
+    againBtn.addEventListener("click", () => {
+        resetBtn.click();
+    });
+
+    // Step 1: Upload -> Inspect variables
+    fileInput.addEventListener("change", async () => {
+        uploadError.textContent = "";
+        hide(uploadError);
+
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        processingNote.textContent = "Processing document...";
+        show(processingNote);
+
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const resp = await fetch("/api/inspect", {
+                method: "POST",
+                body: fd
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || "Inspect failed");
+
+            lastFile = file;
+            lastVariables = data.variables || [];
+
+            // Build variable inputs
+            varsGrid.innerHTML = "";
+            if (lastVariables.length > 0) {
+                lastVariables.forEach((name) => {
+                    const wrap = document.createElement("div");
+                    wrap.innerHTML = `
+              <label class="block text-sm font-medium text-gray-700 mb-1">\`${name}\`</label>
+              <input data-var="${name}" type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Enter value for ${name}" />
+            `;
+                    varsGrid.appendChild(wrap);
+                });
+                varCount.textContent = lastVariables.length;
+                show(variablesPane);
+            } else {
+                variablesPane.classList.add("hidden");
+                varsGrid.innerHTML = "";
+                varCount.textContent = "0";
+            }
+
+            uploadedName.textContent = file.name;
+            hide(uploadPane);
+            show(formPane);
+        } catch (err) {
+            uploadError.textContent = err.message || "Failed to inspect file.";
+            show(uploadError);
+        } finally {
+            hide(processingNote);
+        }
+    });
+
+    // Step 2: Submit -> Send email
+    formPane.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!lastFile) return;
+
+        const email = emailInput.value.trim();
+        if (!email) {
+            alert("Please enter an email address");
+            return;
+        }
+
+        // Collect values
+        const values = {};
+        lastVariables.forEach((name) => {
+            const el = varsGrid.querySelector(`input[data-var="${name}"]`);
+            values[name] = (el?.value || "").toString();
+        });
+
+        sendBtn.disabled = true;
+        show(sendSpinner);
+        hide(sendLabel);
+
+        try {
+            const fd = new FormData();
+            fd.append("file", lastFile);
+            fd.append("email", email);
+            fd.append("values", JSON.stringify(values));
+
+            const resp = await fetch("/api/send", {
+                method: "POST",
+                body: fd
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || "Failed to send email");
+
+            sentEmail.textContent = email;
+            hide(formPane);
+            show(successPane);
+        } catch (err) {
+            alert(err.message || "Error sending email");
+        } finally {
+            sendBtn.disabled = false;
+            hide(sendSpinner);
+            show(sendLabel);
+        }
+    });
+</script>
+</body>
+</html>
